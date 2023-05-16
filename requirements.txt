@@ -1,3 +1,2 @@
 Flask==2.2.2
-langchain==0.0.113
-openai==0.26.4
+llama_index==0.6.8

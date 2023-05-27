@@ -1,37 +1,60 @@
 from flask import Flask, request
-from llama_index import GPTVectorStoreIndex, download_loader
+from llama_index import GPTVectorStoreIndex, download_loader, StorageContext, load_index_from_storage, SimpleDirectoryReader
 from llama_index.readers.schema.base import Document
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
 
-os.environ['OPENAI_API_KEY'] = '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'
+CORS(app, resources={r"/*": {"origins": "*"}})
+os.environ['OPENAI_API_KEY'] = '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'
+
+index = None
+index_dir = "./storage"
 
 
-@app.route('/endpoint', methods=['GET'])
+def initialize_index():
+    global index
+    storage_context = StorageContext.from_defaults()
+    if os.path.exists(index_dir):
+        index = load_index_from_storage(storage_context)
+    else:
+        documents = SimpleDirectoryReader("./documents").load_data()
+        index = GPTVectorStoreIndex.from_documents(
+            documents, storage_context=storage_context)
+        storage_context.persist(index_dir)
+
+
+@app.route('/query', methods=['POST'])
 def single_endpoint():
-    query_param = request.args.get('query', '')
-    print(f'You sent the query parameter: {query_param}')
+    data = request.get_json()
+    urls = data.get('urls', [])
+    query = data.get('query', '')
+    print(f"Received params: {urls} {query} ")
     ApifyActor = download_loader("ApifyActor", refresh_cache=True)
-    print(f"ApifyActor: {ApifyActor} \n")
+
     reader = ApifyActor("apify_api_ywr4Xs6t6UW9DOUcudwwFZ04hE5YqR3wbkds")
-    print(f"Reader: {reader.load_data} \n")
-    documents = reader.load_data(
-        actor_id="apify/website-content-crawler",
-        run_input={"startUrls": [
-            {"url": "https://llamahub.ai/l/apify-actor"}]},
-        dataset_mapping_function=tranform_dataset_item,
-    )
-    print(f"Documents: {str(documents)} \n")
-    index = GPTVectorStoreIndex.from_documents(documents)
+
+    documents = []
+    # Iterate through each URL
+    for url in urls:
+        document = reader.load_data(
+            actor_id="apify/website-content-crawler",
+            run_input={"startUrls": [
+                {"url": url}]},
+            dataset_mapping_function=tranform_dataset_item)
+        documents.append(document)
+
+    index = GPTVectorStoreIndex.from_documents(document)
     query_engine = index.as_query_engine()
-    response = query_engine.query(query_param)
+    response = query_engine.query(query)
 
     return str(response), 200
 
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 def tranform_dataset_item(item):
     doc = Document(
@@ -76,7 +99,6 @@ def tranform_dataset_item(item):
 #     query_engine = index.as_query_engine()
 #     response = query_engine.query(query_text)
 #     return str(response), 200
-
 
 
 # # @app.route('/')

@@ -7,7 +7,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 
 CORS(app, resources={r"/*": {"origins": "*"}})
-os.environ['OPENAI_API_KEY'] = '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'
+os.environ['OPENAI_API_KEY'] = '<OPEN AI API KEY HERE>'
 
 index = None
 index_dir = "./storage"
@@ -33,7 +33,7 @@ def single_endpoint():
     print(f"Received params: {urls} {query} ")
     ApifyActor = download_loader("ApifyActor", refresh_cache=True)
 
-    reader = ApifyActor("apify_api_ywr4Xs6t6UW9DOUcudwwFZ04hE5YqR3wbkds")
+    reader = ApifyActor("<APIFY API KEY HERE>")
 
     documents = []
     # Iterate through each URL
